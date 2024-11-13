@@ -10,7 +10,6 @@ import {
   SafeAreaView,
   ScrollView,
   StatusBar,
-  StyleSheet,
   useColorScheme,
   View,
   Button
@@ -21,29 +20,74 @@ import {
   Header,
 } from 'react-native/Libraries/NewAppScreen';
 
-import FileViewer from 'react-native-file-viewer';
+// import FileViewer from 'react-native-file-viewer';
 import RNGeniusScan from '@thegrizzlylabs/react-native-genius-scan';
+import {NavigationContainer} from '@react-navigation/native';
+import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import {launchImageLibrary} from 'react-native-image-picker';
 
+function ScanModal({navigation}: any) {
+  const pickAndScanImage = async () => {
+    try {
+      const result = await launchImageLibrary({
+        mediaType: 'photo',
+        quality: 1,
+      });
 
+      if (result.assets && result.assets[0].uri) {
+        const configuration = {
+          source: 'image',
+          sourceImageUrl: result.assets[0].uri,
+          ocrConfiguration: {
+            languages: ['en-US'],
+          },
+        };
+
+        const scanResult = await RNGeniusScan.scanWithConfiguration(configuration);
+        // await FileViewer.open(scanResult.multiPageDocumentUrl);
+      }
+    } catch (e) {
+      alert(e);
+    }
+  };
+
+  return (
+    <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+      <Button title="Pick and Scan Photo" onPress={pickAndScanImage} />
+      <Button title="Close" onPress={() => navigation.goBack()} />
+    </View>
+  );
+}
+
+// Modify the App component
 function App(): React.JSX.Element {
+  const Stack = createNativeStackNavigator();
   const isDarkMode = useColorScheme() === 'dark';
 
   const backgroundStyle = {
     backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
   };
 
-  // Refer to the Genius Scan SDK plugin README.md for a list of the available options
-  const configuration = {
-    source: 'camera',
-    ocrConfiguration: {
-      languages: ['en-US']
-    }
-  }
+  return (
+    <NavigationContainer>
+      <Stack.Navigator>
+        <Stack.Group>
+          <Stack.Screen name="Home" component={HomeScreen} />
+        </Stack.Group>
+        <Stack.Group screenOptions={{presentation: 'modal'}}>
+          <Stack.Screen name="ScanModal" component={ScanModal} />
+        </Stack.Group>
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
 
-  // This code shows how to initialize the SDK with a license key.
-  // Without a license key, the SDK runs for 60 seconds and then the app needs to be restarted.
-  //
-  // RNGeniusScan.setLicenseKey("<Your license key>", /* autoRefresh = */ true)
+// Add HomeScreen component
+function HomeScreen({navigation}: any) {
+  const isDarkMode = useColorScheme() === 'dark';
+  const backgroundStyle = {
+    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+  };
 
   return (
     <SafeAreaView style={backgroundStyle}>
@@ -58,38 +102,11 @@ function App(): React.JSX.Element {
         <View
           style={{
             backgroundColor: isDarkMode ? Colors.black : Colors.white,
-            padding: 20
+            padding: 20,
           }}>
           <Button
-            onPress={async () => {
-              try {
-                // Start scan flow
-                let scanResult = await RNGeniusScan.scanWithConfiguration(configuration)
-
-                // The result object contains the captured scans as well as the multipage document
-                console.log(scanResult);
-
-                // Here is how you can display the resulting document:
-                await FileViewer.open(scanResult.multiPageDocumentUrl)
-
-                // You can also generate your document separately from selected pages:
-                /*
-                const documentUrl = 'file://' + appFolder + '/mydocument.pdf'
-                const document = {
-                  pages: [{
-                    imageUrl: scanResult.scans[0].enhancedUrl,
-                    hocrTextLayout: scanResult.scans[0].ocrResult.hocrTextLayout
-                  }]
-                }
-                const generationConfiguration = { outputFileUrl: documentUrl };
-                await RNGeniusScan.generateDocument(document, generationConfiguration)
-                await FileViewer.open(documentUrl)
-                */
-              } catch(e) {
-                alert(e)
-              }
-            }}
-            title="Start scanning"
+            title="Open Scanner Modal"
+            onPress={() => navigation.navigate('ScanModal')}
           />
         </View>
       </ScrollView>
